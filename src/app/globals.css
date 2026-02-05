@@ -1,26 +1,73 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Base Colors - White & Gray Scale */
+  --background: #FFFFFF;
+  --foreground: #111827; /* Gray 900 */
+  
+  /* Muted / Secondary */
+  --muted: #F9FAFB; /* Gray 50 */
+  --muted-foreground: #6B7280; /* Gray 500 */
+  
+  /* Borders */
+  --border: #E5E7EB; /* Gray 200 */
+  
+  /* Components */
+  --card: #FFFFFF;
+  --card-foreground: #111827;
+  
+  /* Primary Action */
+  --primary: #111827; /* Gray 900 */
+  --primary-foreground: #FFFFFF;
+  
+  /* Secondary Action */
+  --secondary: #F3F4F6; /* Gray 100 */
+  --secondary-foreground: #1F2937; /* Gray 800 */
+  
+  /* Accents */
+  --accent: #F1F5F9; /* Slate 100 */
+  --accent-foreground: #0F172A; /* Slate 900 */
+  
+  /* Destructive */
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  
+  /* Radius & Shadows */
+  --radius-lg: 1rem; /* 16px */
+  --radius: 0.75rem; /* 12px */
+  --radius-md: 0.5rem; /* 8px */
+  --radius-sm: 0.25rem; /* 4px */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  
+  --radius-lg: var(--radius-lg);
+  --radius-defaults: var(--radius);
+  --radius-md: var(--radius-md);
+  --radius-sm: var(--radius-sm);
+  
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
