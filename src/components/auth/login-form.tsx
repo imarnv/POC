@@ -13,15 +13,34 @@ export function LoginForm() {
     const [role, setRole] = React.useState<"tenant" | "owner">("tenant")
     const [isLoading, setIsLoading] = React.useState(false)
 
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleCredentialsLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsLoading(true)
+        const form = e.target as HTMLFormElement
+        const formData = new FormData(form)
+        formData.append("role", role)
 
-        // Simulate API delay
-        await new Promise((resolve) => setTimeout(resolve, 1500))
+        try {
+            // We use a dynamic import or call the server action wrapper
+            const { loginWithCredentials } = await import("@/app/actions/auth-actions")
+            await loginWithCredentials(formData)
+        } catch (error) {
+            console.error("Login failed:", error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
 
-        // Navigate based on role
-        router.push(role === "owner" ? "/dashboard/owner" : "/dashboard/tenant")
+    const handleGoogleLogin = async () => {
+        setIsLoading(true)
+        try {
+            const { loginWithGoogle } = await import("@/app/actions/auth-actions")
+            await loginWithGoogle()
+        } catch (error) {
+            console.error("Google login failed:", error)
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     return (
@@ -63,10 +82,11 @@ export function LoginForm() {
                     </button>
                 </div>
 
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={handleCredentialsLogin} className="space-y-4">
                     <div className="space-y-2">
                         <div className="relative">
                             <Input
+                                name="email"
                                 type="email"
                                 placeholder="name@example.com"
                                 required
@@ -76,14 +96,15 @@ export function LoginForm() {
                     </div>
                     <div className="space-y-2">
                         <Input
+                            name="password"
                             type="password"
                             placeholder="••••••••"
                             required
                             className="bg-white/50 h-11"
                         />
                     </div>
-                    <Button className="w-full h-11 text-base font-medium mt-2" type="submit" isLoading={isLoading}>
-                        Sign In as {role === "owner" ? "Owner" : "Tenant"}
+                    <Button className="w-full h-11 text-base font-medium mt-2" type="submit" disabled={isLoading}>
+                        {isLoading ? "Signing in..." : `Sign In as ${role === "owner" ? "Owner" : "Tenant"}`}
                     </Button>
                 </form>
 
@@ -99,7 +120,7 @@ export function LoginForm() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                    <Button variant="outline" type="button" disabled={isLoading} className="h-10">
+                    <Button variant="outline" type="button" disabled={isLoading} className="h-10" onClick={handleGoogleLogin}>
                         Google
                     </Button>
                     <Button variant="outline" type="button" disabled={isLoading} className="h-10">
