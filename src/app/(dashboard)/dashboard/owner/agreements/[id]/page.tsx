@@ -2,12 +2,14 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Download, Edit, Trash2, Save, X, User, Home, MapPin, IndianRupee, Calendar, FileText } from "lucide-react"
+import { ArrowLeft, Download, Edit, Trash2, Save, X, User, Home, MapPin, IndianRupee, Calendar, FileText, Shield, CheckCircle2, CreditCard, PenTool, Video } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { getAgreementById, updateAgreement, deleteAgreement, type Agreement } from "@/lib/agreement-storage"
+import { getAgreementAction, updateAgreementAction, deleteAgreementAction, getClausesAction, requestESignAction } from "@/app/actions/agreement-actions"
+import { AgreementClausesForm, ClauseSelection } from "@/components/forms/agreement-clauses-form"
+import type { Agreement } from "@/types/agreement"
 
 export default function AgreementDetailPage() {
     const params = useParams()
@@ -18,12 +20,24 @@ export default function AgreementDetailPage() {
     const [agreement, setAgreement] = React.useState<Agreement | null>(null)
     const [isEditMode, setIsEditMode] = React.useState(false)
     const [editedAgreement, setEditedAgreement] = React.useState<Agreement | null>(null)
+    const [clauseTemplates, setClauseTemplates] = React.useState<ClauseSelection[]>([])
+    const [isLoading, setIsLoading] = React.useState(true)
 
     // Load agreement on mount
     React.useEffect(() => {
-        const loadedAgreement = getAgreementById(agreementId)
-        setAgreement(loadedAgreement)
-        setEditedAgreement(loadedAgreement)
+        async function load() {
+            setIsLoading(true)
+            try {
+                const loadedAgreement = await getAgreementAction(agreementId)
+                setAgreement(loadedAgreement)
+                setEditedAgreement(loadedAgreement)
+            } catch (error) {
+                console.error("Failed to load agreement", error)
+            } finally {
+                setIsLoading(false)
+            }
+        }
+        load()
     }, [agreementId])
 
     // Auto-print if print parameter is present
@@ -36,11 +50,41 @@ export default function AgreementDetailPage() {
         }
     }, [])
 
-    const handleEdit = () => {
+    const handleEdit = async () => {
+        if (clauseTemplates.length === 0) {
+            try {
+                const templates = await getClausesAction()
+                const mappedTemplates = templates.map((c: any) => ({
+                    id: c.id,
+                    title: c.title,
+                    brief: c.brief,
+                    content: c.content,
+                    category: c.category,
+                    isFree: c.isFree,
+                    price: c.price,
+                    selected: agreement?.clauses?.some(ac => ac.clauseId === c.id) || c.category === "BASE"
+                }))
+                setClauseTemplates(mappedTemplates)
+            } catch (error) {
+                console.error("Failed to load clause templates", error)
+            }
+        }
         setIsEditMode(true)
     }
 
-    const handleSave = () => {
+    const handleRequestESign = async () => {
+        if (!agreement) return
+        try {
+            await requestESignAction(String(agreement.id))
+            setAgreement(prev => prev ? { ...prev, status: "SIGNED" as any } : prev)
+            alert("E-Sign request sent successfully! Status updated to SIGNED.")
+        } catch (error) {
+            console.error("Failed to request E-Sign", error)
+            alert("Failed to request E-Sign.")
+        }
+    }
+
+    const handleSave = async () => {
         if (!editedAgreement) return
 
         // Check if it's a mock agreement (read-only)
@@ -50,12 +94,13 @@ export default function AgreementDetailPage() {
             return
         }
 
-        const updated = updateAgreement(editedAgreement.id, editedAgreement)
-        if (updated) {
-            setAgreement(updated)
+        try {
+            await updateAgreementAction(String(editedAgreement.id), editedAgreement)
+            setAgreement(editedAgreement)
             setIsEditMode(false)
             alert("Agreement updated successfully!")
-        } else {
+        } catch (error) {
+            console.error("Failed to update", error)
             alert("Failed to update agreement.")
         }
     }
@@ -65,7 +110,7 @@ export default function AgreementDetailPage() {
         setIsEditMode(false)
     }
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (!agreement) return
 
         // Check if it's a mock agreement (read-only)
@@ -75,11 +120,12 @@ export default function AgreementDetailPage() {
         }
 
         if (confirm(`Are you sure you want to delete the agreement with ${agreement.tenantName}?`)) {
-            const deleted = deleteAgreement(agreement.id)
-            if (deleted) {
+            try {
+                await deleteAgreementAction(String(agreement.id))
                 alert("Agreement deleted successfully!")
                 router.push("/dashboard/owner/agreements")
-            } else {
+            } catch (error) {
+                console.error("Failed to delete", error)
                 alert("Failed to delete agreement.")
             }
         }
@@ -87,6 +133,10 @@ export default function AgreementDetailPage() {
 
     const handleFieldChange = (field: keyof Agreement, value: any) => {
         setEditedAgreement(prev => prev ? { ...prev, [field]: value } : prev)
+    }
+
+    const handleClausesChange = (updatedClauses: ClauseSelection[]) => {
+        setEditedAgreement(prev => prev ? { ...prev, clauses: updatedClauses as any } : prev)
     }
 
     const handleDownloadPDF = () => {
@@ -207,7 +257,7 @@ export default function AgreementDetailPage() {
                             <p className="text-sm text-muted-foreground mb-1">Father's Name</p>
                             {isEditMode ? (
                                 <Input
-                                    value={agreement.fatherName}
+                                    value={agreement.fatherName || ""}
                                     onChange={(e) => handleFieldChange("fatherName", e.target.value)}
                                     className="font-semibold"
                                 />
@@ -232,7 +282,7 @@ export default function AgreementDetailPage() {
                                 <p className="text-sm text-muted-foreground mb-1">Email</p>
                                 {isEditMode ? (
                                     <Input
-                                        value={agreement.tenantEmail}
+                                        value={agreement.tenantEmail || ""}
                                         onChange={(e) => handleFieldChange("tenantEmail", e.target.value)}
                                         className="font-semibold text-sm"
                                     />
@@ -257,7 +307,7 @@ export default function AgreementDetailPage() {
                             <p className="text-sm text-muted-foreground mb-1">Property Type</p>
                             {isEditMode ? (
                                 <Input
-                                    value={agreement.propertyType}
+                                    value={agreement.propertyType || ""}
                                     onChange={(e) => handleFieldChange("propertyType", e.target.value)}
                                     className="font-semibold"
                                 />
@@ -271,7 +321,7 @@ export default function AgreementDetailPage() {
                                 {isEditMode ? (
                                     <Input
                                         type="number"
-                                        value={agreement.builtUpArea}
+                                        value={agreement.builtUpArea || ""}
                                         onChange={(e) => handleFieldChange("builtUpArea", Number(e.target.value))}
                                         className="font-semibold"
                                     />
@@ -283,7 +333,7 @@ export default function AgreementDetailPage() {
                                 <p className="text-sm text-muted-foreground mb-1">Configuration</p>
                                 {isEditMode ? (
                                     <Input
-                                        value={agreement.configuration}
+                                        value={agreement.configuration || ""}
                                         onChange={(e) => handleFieldChange("configuration", e.target.value)}
                                         className="font-semibold"
                                     />
@@ -299,14 +349,14 @@ export default function AgreementDetailPage() {
                                     <div className="flex gap-2">
                                         <Input
                                             type="number"
-                                            value={agreement.floorNo}
+                                            value={agreement.floorNo || ""}
                                             onChange={(e) => handleFieldChange("floorNo", Number(e.target.value))}
                                             className="font-semibold w-20"
                                         />
                                         <span className="self-center">of</span>
                                         <Input
                                             type="number"
-                                            value={agreement.totalFloors}
+                                            value={agreement.totalFloors || ""}
                                             onChange={(e) => handleFieldChange("totalFloors", Number(e.target.value))}
                                             className="font-semibold w-20"
                                         />
@@ -319,7 +369,7 @@ export default function AgreementDetailPage() {
                                 <p className="text-sm text-muted-foreground mb-1">Orientation</p>
                                 {isEditMode ? (
                                     <Input
-                                        value={agreement.orientation}
+                                        value={agreement.orientation || ""}
                                         onChange={(e) => handleFieldChange("orientation", e.target.value)}
                                         className="font-semibold"
                                     />
@@ -345,7 +395,7 @@ export default function AgreementDetailPage() {
                                 <p className="text-sm text-muted-foreground mb-1">Door/Flat No</p>
                                 {isEditMode ? (
                                     <Input
-                                        value={agreement.doorNo}
+                                        value={agreement.doorNo || ""}
                                         onChange={(e) => handleFieldChange("doorNo", e.target.value)}
                                         className="font-semibold"
                                     />
@@ -357,7 +407,7 @@ export default function AgreementDetailPage() {
                                 <p className="text-sm text-muted-foreground mb-1">Street</p>
                                 {isEditMode ? (
                                     <Input
-                                        value={agreement.street}
+                                        value={agreement.street || ""}
                                         onChange={(e) => handleFieldChange("street", e.target.value)}
                                         className="font-semibold"
                                     />
@@ -371,7 +421,7 @@ export default function AgreementDetailPage() {
                                 <p className="text-sm text-muted-foreground mb-1">Area</p>
                                 {isEditMode ? (
                                     <Input
-                                        value={agreement.area}
+                                        value={agreement.area || ""}
                                         onChange={(e) => handleFieldChange("area", e.target.value)}
                                         className="font-semibold"
                                     />
@@ -383,7 +433,7 @@ export default function AgreementDetailPage() {
                                 <p className="text-sm text-muted-foreground mb-1">Landmark</p>
                                 {isEditMode ? (
                                     <Input
-                                        value={agreement.landmark}
+                                        value={agreement.landmark || ""}
                                         onChange={(e) => handleFieldChange("landmark", e.target.value)}
                                         className="font-semibold"
                                     />
@@ -397,7 +447,7 @@ export default function AgreementDetailPage() {
                                 <p className="text-sm text-muted-foreground mb-1">City</p>
                                 {isEditMode ? (
                                     <Input
-                                        value={agreement.city}
+                                        value={agreement.city || ""}
                                         onChange={(e) => handleFieldChange("city", e.target.value)}
                                         className="font-semibold"
                                     />
@@ -409,7 +459,7 @@ export default function AgreementDetailPage() {
                                 <p className="text-sm text-muted-foreground mb-1">State</p>
                                 {isEditMode ? (
                                     <Input
-                                        value={agreement.state}
+                                        value={agreement.state || ""}
                                         onChange={(e) => handleFieldChange("state", e.target.value)}
                                         className="font-semibold"
                                     />
@@ -515,6 +565,148 @@ export default function AgreementDetailPage() {
                             <p className="text-sm text-muted-foreground">Duration</p>
                             <p className="text-lg font-semibold">{duration} months</p>
                         </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* High Level Document Sections */}
+            <div className="grid gap-6 md:grid-cols-2 mt-8 border-t pt-8">
+                <Card className="border-none shadow-md">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Shield className="w-5 h-5 text-primary" />
+                            Executive Summary
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm leading-relaxed text-muted-foreground">
+                            This rental agreement governs the lease of the property at {agreement.doorNo}, {agreement.street} between {agreement.ownerName || 'the Owner'} and {agreement.tenantName}.
+                            It outlines the financial terms, maintenance responsibilities, and usage restrictions agreed upon by both parties to ensure a clear and harmonious tenancy.
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-md">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-primary">
+                            <CheckCircle2 className="w-5 h-5" />
+                            Objectives
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        <li className="text-sm text-muted-foreground">Establish clear terms for property usage and maintenance.</li>
+                        <li className="text-sm text-muted-foreground">Define financial obligations including rent and security deposit.</li>
+                        <li className="text-sm text-muted-foreground">Provide a legal framework for dispute resolution and termination.</li>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Agreement Clauses Section */}
+            <div className="space-y-4 mt-8">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                    <FileText className="w-6 h-6 text-primary" />
+                    Agreement Clauses
+                </h3>
+                <div className="grid gap-4">
+                    {isEditMode ? (
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-border/50">
+                            <AgreementClausesForm
+                                onSubmit={(selected) => handleClausesChange(selected)}
+                                onBack={() => setIsEditMode(false)}
+                                initialData={editedAgreement.clauses?.map((c: any) => ({
+                                    id: c.clauseId || c.id,
+                                    title: c.title,
+                                    brief: c.brief,
+                                    content: c.content,
+                                    category: c.category,
+                                    isFree: c.isFree,
+                                    price: c.price,
+                                    selected: true
+                                })) || clauseTemplates}
+                            />
+                        </div>
+                    ) : (
+                        <>
+                            {agreement.clauses && agreement.clauses.length > 0 ? (
+                                <>
+                                    {['BASE', 'ADDITIONAL', 'AMENITY', 'CUSTOM'].map(category => {
+                                        const categoryClauses = agreement.clauses?.filter(c => c.category === category)
+                                        if (!categoryClauses || categoryClauses.length === 0) return null
+                                        return (
+                                            <div key={category} className="space-y-3">
+                                                <h4 className="text-sm font-bold uppercase text-muted-foreground tracking-widest">{category} Clauses</h4>
+                                                <div className="grid gap-3">
+                                                    {categoryClauses.map(clause => (
+                                                        <div key={clause.id} className="p-4 bg-white rounded-xl border border-border/50 shadow-sm">
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <h5 className="font-bold">{clause.title}</h5>
+                                                                {!clause.isFree && <Badge variant="secondary">Paid: ₹{clause.price}</Badge>}
+                                                            </div>
+                                                            <p className="text-sm text-muted-foreground italic mb-2">"{clause.brief}"</p>
+                                                            <div className="p-3 bg-muted/30 rounded-lg text-sm border-l-4 border-primary/20">
+                                                                {clause.content.replace(/\[(.*?)\]/g, (match) => match)}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </>
+                            ) : (
+                                <div className="p-8 text-center bg-muted/20 rounded-2xl border-2 border-dashed">
+                                    <p className="text-muted-foreground">No specific clauses added to this agreement.</p>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {/* Advanced Features Placeholders */}
+            <div className="grid gap-6 md:grid-cols-3 mt-8">
+                <Card className="bg-primary/5 border-primary/20">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                            <CreditCard className="w-4 h-4" />
+                            Payments
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-xs text-muted-foreground mb-3">Integrate payment gateway for automated rent collection.</p>
+                        <Button size="sm" variant="outline" className="w-full text-xs" disabled>Setup Payments</Button>
+                    </CardContent>
+                </Card>
+                <Card className="bg-primary/5 border-primary/20">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                            <Video className="w-4 h-4" />
+                            Media Storage
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-xs text-muted-foreground mb-3">Store property videos and photos (Limit: 5GB).</p>
+                        <Button size="sm" variant="outline" className="w-full text-xs" disabled>Upload Media</Button>
+                    </CardContent>
+                </Card>
+                <Card className="bg-primary/5 border-primary/20">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                            <PenTool className="w-4 h-4" />
+                            E-Signing
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-xs text-muted-foreground mb-3">Send for digital signature via Aadhaar/eSign.</p>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full text-xs hover:bg-primary hover:text-white transition-colors"
+                            onClick={handleRequestESign}
+                            disabled={agreement.status === "SIGNED" as any}
+                        >
+                            {agreement.status === "SIGNED" as any ? "Already Signed" : "Request E-Sign"}
+                        </Button>
                     </CardContent>
                 </Card>
             </div>

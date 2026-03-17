@@ -17,12 +17,12 @@ export interface PropertyDetails {
 }
 
 interface PropertyDetailsFormProps {
-    onSubmit: (data: PropertyDetails) => void
+    onNext: (data: PropertyDetails) => void
     onBack: () => void
     initialData?: PropertyDetails
 }
 
-export function PropertyDetailsForm({ onSubmit, onBack, initialData }: PropertyDetailsFormProps) {
+export function PropertyDetailsForm({ onNext, onBack, initialData }: PropertyDetailsFormProps) {
     const [showMore, setShowMore] = React.useState(false)
     const [formData, setFormData] = React.useState<PropertyDetails>({
         propertyType: initialData?.propertyType || "Residential Apartment",
@@ -43,11 +43,12 @@ export function PropertyDetailsForm({ onSubmit, onBack, initialData }: PropertyD
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         console.log("Property Details:", formData)
-        onSubmit(formData)
+        onNext(formData)
     }
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
+            {/* ... rest of form ... */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                     <label className="text-sm font-medium">Property Type</label>
@@ -161,7 +162,7 @@ export function PropertyDetailsForm({ onSubmit, onBack, initialData }: PropertyD
 
             <div className="flex justify-between pt-4">
                 <Button type="button" variant="outline" onClick={onBack} size="lg">Back</Button>
-                <Button type="submit" size="lg" className="bg-green-600 hover:bg-green-700">Create Agreement</Button>
+                <Button type="submit" size="lg" className="bg-primary hover:bg-primary/90">Continue</Button>
             </div>
         </form>
     )

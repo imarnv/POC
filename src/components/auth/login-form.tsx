@@ -24,8 +24,6 @@ export function LoginForm() {
             // We use a dynamic import or call the server action wrapper
             const { loginWithCredentials } = await import("@/app/actions/auth-actions")
             await loginWithCredentials(formData)
-        } catch (error) {
-            console.error("Login failed:", error)
         } finally {
             setIsLoading(false)
         }
@@ -35,9 +33,7 @@ export function LoginForm() {
         setIsLoading(true)
         try {
             const { loginWithGoogle } = await import("@/app/actions/auth-actions")
-            await loginWithGoogle()
-        } catch (error) {
-            console.error("Google login failed:", error)
+            await loginWithGoogle(role)
         } finally {
             setIsLoading(false)
         }

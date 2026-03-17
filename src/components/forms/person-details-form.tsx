@@ -11,6 +11,7 @@ export interface PersonDetails {
     spouseName?: string
     primaryMobile: string
     whatsapp?: string
+    email: string
 }
 
 interface PersonDetailsFormProps {
@@ -26,6 +27,7 @@ export function PersonDetailsForm({ onNext, initialData }: PersonDetailsFormProp
         spouseName: initialData?.spouseName || "",
         primaryMobile: initialData?.primaryMobile || "",
         whatsapp: initialData?.whatsapp || "",
+        email: initialData?.email || "",
     })
 
     const handleChange = (field: keyof PersonDetails) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,10 +47,10 @@ export function PersonDetailsForm({ onNext, initialData }: PersonDetailsFormProp
                     <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="firstName">
                         First Name
                     </label>
-                    <Input 
-                        id="firstName" 
-                        placeholder="Enter first name" 
-                        required 
+                    <Input
+                        id="firstName"
+                        placeholder="Enter first name"
+                        required
                         className="bg-white/50"
                         value={formData.firstName}
                         onChange={handleChange("firstName")}
@@ -58,10 +60,10 @@ export function PersonDetailsForm({ onNext, initialData }: PersonDetailsFormProp
                     <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="lastName">
                         Last Name
                     </label>
-                    <Input 
-                        id="lastName" 
-                        placeholder="Enter last name" 
-                        required 
+                    <Input
+                        id="lastName"
+                        placeholder="Enter last name"
+                        required
                         className="bg-white/50"
                         value={formData.lastName}
                         onChange={handleChange("lastName")}
@@ -72,9 +74,9 @@ export function PersonDetailsForm({ onNext, initialData }: PersonDetailsFormProp
                     <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="fatherName">
                         Father's Name <span className="text-muted-foreground font-normal">(Optional)</span>
                     </label>
-                    <Input 
-                        id="fatherName" 
-                        placeholder="Enter father's name" 
+                    <Input
+                        id="fatherName"
+                        placeholder="Enter father's name"
                         className="bg-white/50"
                         value={formData.fatherName}
                         onChange={handleChange("fatherName")}
@@ -84,9 +86,9 @@ export function PersonDetailsForm({ onNext, initialData }: PersonDetailsFormProp
                     <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="spouseName">
                         Spouse's Name <span className="text-muted-foreground font-normal">(Optional)</span>
                     </label>
-                    <Input 
-                        id="spouseName" 
-                        placeholder="Enter spouse's name" 
+                    <Input
+                        id="spouseName"
+                        placeholder="Enter spouse's name"
                         className="bg-white/50"
                         value={formData.spouseName}
                         onChange={handleChange("spouseName")}
@@ -97,10 +99,10 @@ export function PersonDetailsForm({ onNext, initialData }: PersonDetailsFormProp
                     <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="primaryMobile">
                         Primary Mobile
                     </label>
-                    <Input 
-                        id="primaryMobile" 
-                        placeholder="Enter mobile number" 
-                        required 
+                    <Input
+                        id="primaryMobile"
+                        placeholder="Enter mobile number"
+                        required
                         type="tel"
                         pattern="[0-9]{10}"
                         className="bg-white/50"
@@ -112,14 +114,28 @@ export function PersonDetailsForm({ onNext, initialData }: PersonDetailsFormProp
                     <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="whatsapp">
                         WhatsApp Number <span className="text-muted-foreground font-normal">(Optional)</span>
                     </label>
-                    <Input 
-                        id="whatsapp" 
-                        placeholder="Enter WhatsApp number" 
+                    <Input
+                        id="whatsapp"
+                        placeholder="Enter WhatsApp number"
                         type="tel"
                         pattern="[0-9]{10}"
                         className="bg-white/50"
                         value={formData.whatsapp}
                         onChange={handleChange("whatsapp")}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="email">
+                        Email Address
+                    </label>
+                    <Input
+                        id="email"
+                        placeholder="Enter email address"
+                        required
+                        type="email"
+                        className="bg-white/50"
+                        value={formData.email}
+                        onChange={handleChange("email")}
                     />
                 </div>
             </div>

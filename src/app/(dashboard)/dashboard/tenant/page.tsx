@@ -1,12 +1,67 @@
-"use client"
 
 import * as React from "react"
-import { CalendarClock, Download, Home, IndianRupee, Phone, ShieldCheck } from "lucide-react"
+import { CalendarClock, Download, Home, IndianRupee, Phone, ShieldCheck, Building2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { getTenantAgreementsAction } from "@/app/actions/agreement-actions"
+import { auth } from "@/auth"
+import Link from "next/link"
 
-export default function TenantDashboard() {
+export default async function TenantDashboard() {
+    const session = await auth()
+    const agreements = await getTenantAgreementsAction()
+
+    const activeAgreement = agreements.find(a => a.status === "active" || a.status === "expiring_soon") || agreements[0]
+
+    if (!activeAgreement) {
+        return (
+            <div className="space-y-8">
+                <div>
+                    <h2 className="text-3xl font-bold tracking-tight">My Home</h2>
+                    <p className="text-muted-foreground">Manage your rental agreement and payments.</p>
+                </div>
+
+                <Card className="border-none shadow-lg bg-muted/20 py-12">
+                    <CardContent className="flex flex-col items-center justify-center text-center space-y-4">
+                        <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center">
+                            <Building2 className="h-10 w-10 text-muted-foreground" />
+                        </div>
+                        <div className="space-y-2">
+                            <CardTitle className="text-2xl">No Active Agreements</CardTitle>
+                            <CardDescription className="max-w-sm mx-auto text-base">
+                                Once your owner creates a rental agreement for your email ({session?.user?.email}), it will appear here.
+                            </CardDescription>
+                        </div>
+                        <Link href="mailto:support@rentalapp.com">
+                            <Button variant="outline">Contact Support</Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+            </div>
+        )
+    }
+
+    const formatCurrency = (amt: number) => {
+        return new Intl.NumberFormat('en-IN', {
+            maximumFractionDigits: 0
+        }).format(amt)
+    }
+
+    const formatDate = (dateStr: string) => {
+        return new Date(dateStr).toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        })
+    }
+
+    // Calculate days until next rent (mocking 5th of next month for now as we don't have rent schedule yet)
+    const today = new Date()
+    const nextRentDate = new Date(today.getFullYear(), today.getMonth() + (today.getDate() > 5 ? 1 : 0), 5)
+    const diffTime = Math.abs(nextRentDate.getTime() - today.getTime())
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
     return (
         <div className="space-y-8">
             <div>
@@ -19,16 +74,26 @@ export default function TenantDashboard() {
                 <Card className="md:col-span-2 lg:col-span-1 border-none shadow-lg bg-gradient-to-br from-white to-slate-50">
                     <CardHeader>
                         <div className="flex items-center justify-between">
-                            <CardTitle className="text-xl">Greenfield Apartments</CardTitle>
-                            <Badge className="bg-green-600">Active Lease</Badge>
+                            <CardTitle className="text-xl">
+                                {activeAgreement.doorNo ? `${activeAgreement.doorNo}, ` : ""}{activeAgreement.propertyAddress || "Your Rental Property"}
+                            </CardTitle>
+                            <Badge className={activeAgreement.status === 'active' ? "bg-green-600" : "bg-orange-600"}>
+                                {activeAgreement.status.replace('_', ' ').toUpperCase()}
+                            </Badge>
                         </div>
-                        <CardDescription>Flat 402, B Block, Electronic City Phase 1</CardDescription>
+                        <CardDescription>
+                            {activeAgreement.street ? `${activeAgreement.street}, ` : ""}
+                            {activeAgreement.area ? `${activeAgreement.area}, ` : ""}
+                            {activeAgreement.city || ""}
+                        </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1">
                                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Monthly Rent</p>
-                                <p className="text-2xl font-bold flex items-center"><IndianRupee className="w-4 h-4 mr-1" /> 25,000</p>
+                                <p className="text-2xl font-bold flex items-center">
+                                    <IndianRupee className="w-4 h-4 mr-1 text-primary" /> {formatCurrency(activeAgreement.monthlyRent)}
+                                </p>
                             </div>
                             <div className="space-y-1">
                                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Due Date</p>
@@ -36,11 +101,11 @@ export default function TenantDashboard() {
                             </div>
                             <div className="space-y-1">
                                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Lease Ends</p>
-                                <p className="text-lg font-medium">Jan 20, 2027</p>
+                                <p className="text-lg font-medium">{formatDate(activeAgreement.endDate)}</p>
                             </div>
                             <div className="space-y-1">
                                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Deposit</p>
-                                <p className="text-lg font-medium">₹ 1,50,000</p>
+                                <p className="text-lg font-medium">₹ {formatCurrency(activeAgreement.securityDeposit)}</p>
                             </div>
                         </div>
 
@@ -48,7 +113,7 @@ export default function TenantDashboard() {
                             <ShieldCheck className="w-5 h-5 text-blue-600 mt-0.5" />
                             <div>
                                 <p className="text-sm font-medium text-blue-900">Agreement Verified</p>
-                                <p className="text-xs text-blue-700">Your rental agreement is digitally signed and valid.</p>
+                                <p className="text-xs text-blue-700">Digitally signed on {formatDate(activeAgreement.startDate)}</p>
                             </div>
                         </div>
                     </CardContent>
@@ -70,12 +135,12 @@ export default function TenantDashboard() {
                         </CardHeader>
                         <CardContent>
                             <div className="flex items-center gap-4 mb-4">
-                                <div className="h-12 w-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 text-lg font-bold">
-                                    JS
+                                <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-lg font-bold">
+                                    {(activeAgreement as any).ownerName ? (activeAgreement as any).ownerName.charAt(0).toUpperCase() : "O"}
                                 </div>
                                 <div>
-                                    <p className="font-medium">Arnav Mehta</p>
-                                    <p className="text-sm text-muted-foreground">Property Owner</p>
+                                    <p className="font-medium">{(activeAgreement as any).ownerName || "Property Owner"}</p>
+                                    <p className="text-sm text-muted-foreground">Managed via RentalApp</p>
                                 </div>
                             </div>
                             <div className="grid gap-2">
@@ -92,12 +157,12 @@ export default function TenantDashboard() {
                     <Card className="bg-primary text-primary-foreground border-none shadow-md">
                         <CardHeader>
                             <CardTitle className="text-lg">Next Rent Due</CardTitle>
-                            <CardDescription className="text-primary-foreground/80">In 12 days</CardDescription>
+                            <CardDescription className="text-primary-foreground/80">In {diffDays} days</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="flex items-baseline gap-1">
-                                <span className="text-3xl font-bold">₹25,000</span>
-                                <span className="text-sm opacity-80">for Feb 2026</span>
+                                <span className="text-3xl font-bold">₹{formatCurrency(activeAgreement.monthlyRent)}</span>
+                                <span className="text-sm opacity-80">for {nextRentDate.toLocaleString('default', { month: 'short' })} {nextRentDate.getFullYear()}</span>
                             </div>
                         </CardContent>
                     </Card>

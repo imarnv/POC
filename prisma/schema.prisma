@@ -130,7 +130,42 @@ model RentalAgreement {
   
   // Relations
   tenantUser      User?    @relation(fields: [tenantId], references: [id])
+  clauses         AgreementClause[]
 
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Clause {
+  id          String   @id @default(cuid())
+  title       String
+  brief       String
+  content     String
+  category    String   // BASE | ADDITIONAL | AMENITY | CUSTOM
+  isFree      Boolean  @default(true)
+  price       Float?
+  
+  createdBy   String?
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AgreementClause {
+  id              String   @id @default(cuid())
+  agreementId     String
+  agreement       RentalAgreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  
+  clauseId        String?  // Reference to template if applicable
+  title           String
+  brief           String
+  content         String
+  category        String
+  isFree          Boolean  @default(true)
+  price           Float?
+  
+  createdBy       String?
+  updatedBy       String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

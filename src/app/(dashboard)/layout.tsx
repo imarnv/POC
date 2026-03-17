@@ -89,12 +89,17 @@ export default function DashboardLayout({
                                 <p className="text-muted-foreground">{isOwner ? "Landlord" : "Tenant"}</p>
                             </div>
                         </div>
-                        <Link href="/">
-                            <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive">
-                                <LogOut className="w-4 h-4 mr-2" />
-                                Log out
-                            </Button>
-                        </Link>
+                        <Button
+                            variant="ghost"
+                            className="w-full justify-start text-muted-foreground hover:text-destructive"
+                            onClick={async () => {
+                                const { logout } = await import("@/app/actions/auth-actions")
+                                await logout()
+                            }}
+                        >
+                            <LogOut className="w-4 h-4 mr-2" />
+                            Log out
+                        </Button>
                     </div>
                 </div>
             </aside>

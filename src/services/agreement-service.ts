@@ -9,7 +9,7 @@ export async function getOwnerAgreements(userId: string) {
     // We will fetch properties owned by user, then agreements linked to those properties
     // Or just all agreements where property.ownerId = userId
 
-    const agreements = await prisma.rentalAgreement.findMany({
+    const agreements = await (prisma.rentalAgreement as any).findMany({
         where: {
             property: {
                 ownerId: userId
@@ -32,14 +32,22 @@ export async function getOwnerAgreements(userId: string) {
 }
 
 export async function getTenantAgreements(userId: string) {
-    // Agreements where tenantId matches (if linked) OR maybe matched by email?
-    // For now, by tenantId
-    const agreements = await prisma.rentalAgreement.findMany({
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user?.email) return []
+
+    const agreements = await (prisma.rentalAgreement as any).findMany({
         where: {
-            tenantId: userId
+            OR: [
+                { tenantId: userId },
+                { tenantEmail: user.email }
+            ]
         },
         include: {
-            property: true
+            property: {
+                include: {
+                    owner: true
+                }
+            }
         },
         orderBy: {
             updatedAt: 'desc'
@@ -52,11 +60,12 @@ export async function getTenantAgreements(userId: string) {
     }))
 }
 
-export async function getAgreementById(id: string) {
-    const agreement = await prisma.rentalAgreement.findUnique({
+export async function getAgreementById(id: string): Promise<any> {
+    const agreement = await (prisma.rentalAgreement as any).findUnique({
         where: { id },
         include: {
-            property: true
+            property: true,
+            clauses: true
         }
     })
 
@@ -94,6 +103,7 @@ export async function createAgreement(data: {
     securityDeposit: number
     startDate: Date
     endDate: Date
+    clauses?: any[]
 }) {
     // 1. Create Property
     // 2. Create Agreement
@@ -103,7 +113,7 @@ export async function createAgreement(data: {
         where: { email: data.tenantEmail }
     })
 
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx: any) => {
         const property = await tx.property.create({
             data: {
                 ownerId: data.ownerId,
@@ -123,7 +133,7 @@ export async function createAgreement(data: {
             }
         })
 
-        const agreement = await tx.rentalAgreement.create({
+        const agreement = await (tx.rentalAgreement as any).create({
             data: {
                 propertyId: property.id,
                 tenantName: data.tenantName,
@@ -135,7 +145,19 @@ export async function createAgreement(data: {
                 startDate: data.startDate,
                 endDate: data.endDate,
                 tenantId: tenantUser?.id, // Link if exists
-                status: calculateStatus(data.startDate, data.endDate)
+                status: calculateStatus(data.startDate, data.endDate),
+                clauses: {
+                    create: data.clauses?.map(clause => ({
+                        clauseId: clause.id,
+                        title: clause.title,
+                        brief: clause.brief,
+                        content: clause.content,
+                        category: clause.category,
+                        isFree: clause.isFree,
+                        price: clause.price,
+                        createdBy: data.ownerId
+                    })) || []
+                }
             }
         })
 
@@ -143,15 +165,57 @@ export async function createAgreement(data: {
     })
 }
 
-export async function updateAgreement(id: string, data: Partial<RentalAgreement>) {
-    return await prisma.rentalAgreement.update({
+export async function updateAgreement(id: string, data: any) {
+    return await prisma.$transaction(async (tx) => {
+        const { clauses, ...agreementData } = data
+
+        if (clauses) {
+            // Delete existing clauses
+            await (tx as any).agreementClause.deleteMany({
+                where: { agreementId: id }
+            })
+
+            // Create new ones
+            if (clauses.length > 0) {
+                await (tx as any).agreementClause.createMany({
+                    data: clauses.map((c: any) => ({
+                        agreementId: id,
+                        clauseId: c.clauseId || c.id,
+                        title: c.title,
+                        brief: c.brief,
+                        content: c.content,
+                        category: c.category,
+                        isFree: c.isFree,
+                        price: c.price
+                    }))
+                })
+            }
+        }
+
+        return await (tx.rentalAgreement as any).update({
+            where: { id },
+            data: agreementData
+        })
+    })
+}
+
+export async function requestESign(id: string) {
+    return await (prisma.rentalAgreement as any).update({
         where: { id },
-        data // Be careful with relations
+        data: { status: "SIGNED" }
     })
 }
 
 export async function deleteAgreement(id: string) {
-    return await prisma.rentalAgreement.delete({
+    return await (prisma.rentalAgreement as any).delete({
         where: { id }
+    })
+}
+
+export async function getClauses() {
+    return await (prisma as any).clause.findMany({
+        orderBy: {
+            category: 'asc'
+        }
     })
 }

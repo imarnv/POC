@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { PersonDetailsForm, PersonDetails } from "@/components/forms/person-details-form"
 import { AddressForm, AddressDetails } from "@/components/forms/address-form"
 import { PropertyDetailsForm, PropertyDetails } from "@/components/forms/property-details-form"
+import { AgreementClausesForm, ClauseSelection } from "@/components/forms/agreement-clauses-form"
 import { Modal } from "@/components/ui/modal"
 import { Button } from "@/components/ui/button"
 import { createAgreementAction } from "@/app/actions/agreement-actions"
@@ -16,12 +17,14 @@ const steps = [
     { id: 1, title: "Person Details" },
     { id: 2, title: "Address" },
     { id: 3, title: "Property & Rent" },
+    { id: 4, title: "Agreement Clauses" },
 ]
 
 interface AgreementData {
     personDetails?: PersonDetails
     addressDetails?: AddressDetails
     propertyDetails?: PropertyDetails
+    clauses?: ClauseSelection[]
 }
 
 export default function NewAgreementPage() {
@@ -29,80 +32,105 @@ export default function NewAgreementPage() {
     const [currentStep, setCurrentStep] = React.useState(1)
     const [formData, setFormData] = React.useState<AgreementData>({})
     const [isSubmitting, setIsSubmitting] = React.useState(false)
+    const [clauses, setClauses] = React.useState<ClauseSelection[]>([])
+    const [isLoadingClauses, setIsLoadingClauses] = React.useState(true)
 
-    const handleNext = (data: PersonDetails | AddressDetails) => {
+    React.useEffect(() => {
+        const fetchClauses = async () => {
+            const data = await import("@/app/actions/agreement-actions").then(mod => mod.getClausesAction())
+            const mappedClauses = data.map((c: any) => ({
+                id: c.id,
+                title: c.title,
+                brief: c.brief,
+                content: c.content,
+                category: c.category,
+                isFree: c.isFree,
+                price: c.price,
+                selected: c.category === "BASE"
+            }))
+            setClauses(mappedClauses)
+            setIsLoadingClauses(false)
+        }
+        fetchClauses()
+    }, [])
+
+    const handleNext = (data: PersonDetails | AddressDetails | PropertyDetails) => {
         if (currentStep === 1) {
             setFormData((prev) => ({ ...prev, personDetails: data as PersonDetails }))
         } else if (currentStep === 2) {
             setFormData((prev) => ({ ...prev, addressDetails: data as AddressDetails }))
+        } else if (currentStep === 3) {
+            setFormData((prev) => ({ ...prev, propertyDetails: data as PropertyDetails }))
         }
         setCurrentStep((prev) => Math.min(prev + 1, steps.length + 1))
+    }
+
+    const handleClausesSubmit = (selectedClauses: ClauseSelection[]) => {
+        const completeData = { ...formData, clauses: selectedClauses }
+        setFormData(completeData)
+        handleSubmit(completeData)
     }
 
     const handleBack = () => {
         setCurrentStep((prev) => Math.max(prev - 1, 1))
     }
 
-    const handleSubmit = async (data: PropertyDetails) => {
+    const handleSubmit = async (completeData: AgreementData) => {
         setIsSubmitting(true)
-        const completeData: AgreementData = {
-            ...formData,
-            propertyDetails: data,
-        }
-        setFormData(completeData)
 
-        try {
-            const { personDetails, addressDetails, propertyDetails } = completeData
+        const { personDetails, addressDetails, propertyDetails } = completeData
 
-            if (!personDetails || !addressDetails || !propertyDetails) {
-                console.error("Missing required data")
-                return
-            }
-
-            const submitData = new FormData()
-
-            // Person Details
-            submitData.append("tenantName", `${personDetails.firstName} ${personDetails.lastName}`)
-            submitData.append("tenantMobile", personDetails.primaryMobile)
-            submitData.append("tenantEmail", personDetails.whatsapp || `${personDetails.primaryMobile}@example.com`) // Fallback
-            submitData.append("fatherName", personDetails.fatherName || "")
-
-            // Address Details
-            const propertyAddress = `${addressDetails.doorNo}, ${addressDetails.street}, ${addressDetails.area}, ${addressDetails.city}`
-            submitData.append("propertyAddress", propertyAddress)
-            submitData.append("doorNo", addressDetails.doorNo)
-            submitData.append("street", addressDetails.street)
-            submitData.append("area", addressDetails.area)
-            submitData.append("city", addressDetails.city)
-            submitData.append("state", addressDetails.state)
-            submitData.append("landmark", addressDetails.landmark || "")
-
-            // Property Details
-            submitData.append("propertyType", propertyDetails.propertyType)
-            submitData.append("builtUpArea", propertyDetails.builtUpArea.toString())
-            submitData.append("configuration", propertyDetails.configuration || "")
-            submitData.append("orientation", propertyDetails.orientation || "")
-            submitData.append("floorNo", (propertyDetails.floorNo || 0).toString())
-            submitData.append("totalFloors", (propertyDetails.totalFloors || 0).toString())
-            submitData.append("monthlyRent", propertyDetails.monthlyRent.toString())
-            submitData.append("securityDeposit", propertyDetails.securityDeposit.toString())
-
-            // Default Dates (Normally user should pick, but following existing logic)
-            const startDate = new Date().toISOString().split('T')[0]
-            const endDate = new Date()
-            endDate.setFullYear(endDate.getFullYear() + 1)
-            const endDateStr = endDate.toISOString().split('T')[0]
-
-            submitData.append("startDate", startDate)
-            submitData.append("endDate", endDateStr)
-
-            await createAgreementAction(submitData)
-            // Redirect handles by action
-        } catch (error) {
-            console.error("Error creating agreement:", error)
-            alert("Failed to create agreement. Please try again.")
+        if (!personDetails || !addressDetails || !propertyDetails) {
+            console.error("Missing required data")
             setIsSubmitting(false)
+            return
         }
+
+        const submitData = new FormData()
+
+        // Person Details
+        submitData.append("tenantName", `${personDetails.firstName} ${personDetails.lastName}`)
+        submitData.append("tenantMobile", personDetails.primaryMobile)
+        submitData.append("tenantEmail", personDetails.email)
+        submitData.append("fatherName", personDetails.fatherName || "")
+
+        // Address Details
+        const propertyAddress = `${addressDetails.doorNo}, ${addressDetails.street}, ${addressDetails.area}, ${addressDetails.city}`
+        submitData.append("propertyAddress", propertyAddress)
+        submitData.append("doorNo", addressDetails.doorNo)
+        submitData.append("street", addressDetails.street)
+        submitData.append("area", addressDetails.area)
+        submitData.append("city", addressDetails.city)
+        submitData.append("state", addressDetails.state)
+        submitData.append("landmark", addressDetails.landmark || "")
+
+        // Property Details
+        submitData.append("propertyType", propertyDetails.propertyType)
+        submitData.append("builtUpArea", propertyDetails.builtUpArea.toString())
+        submitData.append("configuration", propertyDetails.configuration || "")
+        submitData.append("orientation", propertyDetails.orientation || "")
+        submitData.append("floorNo", (propertyDetails.floorNo || 0).toString())
+        submitData.append("totalFloors", (propertyDetails.totalFloors || 0).toString())
+        submitData.append("monthlyRent", propertyDetails.monthlyRent.toString())
+        submitData.append("securityDeposit", propertyDetails.securityDeposit.toString())
+
+        // Clauses
+        if (completeData.clauses) {
+            const selectedClauses = completeData.clauses.filter(c => c.selected)
+            submitData.append("clauses", JSON.stringify(selectedClauses))
+        }
+
+        // Default Dates
+        const startDate = new Date().toISOString().split('T')[0]
+        const endDate = new Date()
+        endDate.setFullYear(endDate.getFullYear() + 1)
+        const endDateStr = endDate.toISOString().split('T')[0]
+
+        submitData.append("startDate", startDate)
+        submitData.append("endDate", endDateStr)
+
+        await createAgreementAction(submitData)
+        // Redirect handled by action
     }
 
     return (
@@ -152,14 +180,21 @@ export default function NewAgreementPage() {
                             {currentStep === 1 && <PersonDetailsForm onNext={handleNext} initialData={formData.personDetails} />}
                             {currentStep === 2 && <AddressForm onNext={handleNext} onBack={handleBack} initialData={formData.addressDetails} />}
                             {currentStep === 3 && (
+                                <PropertyDetailsForm onNext={handleNext} onBack={handleBack} initialData={formData.propertyDetails} />
+                            )}
+                            {currentStep === 4 && (
                                 <>
-                                    {isSubmitting ? (
+                                    {isSubmitting || isLoadingClauses ? (
                                         <div className="flex flex-col items-center justify-center py-12 space-y-4">
                                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                                            <p className="text-muted-foreground">Creating Agreement...</p>
+                                            <p className="text-muted-foreground">{isSubmitting ? "Creating Agreement..." : "Loading Clauses..."}</p>
                                         </div>
                                     ) : (
-                                        <PropertyDetailsForm onSubmit={handleSubmit} onBack={handleBack} initialData={formData.propertyDetails} />
+                                        <AgreementClausesForm
+                                            onSubmit={handleClausesSubmit}
+                                            onBack={handleBack}
+                                            initialData={formData.clauses || clauses}
+                                        />
                                     )}
                                 </>
                             )}
@@ -170,4 +205,3 @@ export default function NewAgreementPage() {
         </div>
     )
 }
-

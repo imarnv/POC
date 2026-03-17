@@ -59,8 +59,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ],
     callbacks: {
         async session({ session, user, token }) {
-            if (session.user && token.sub) {
-                session.user.id = token.sub;
+            if (session.user && token.id) {
+                session.user.id = token.id as string;
             }
             if (session.user && token.role) {
                 session.user.role = token.role as "OWNER" | "TENANT";
@@ -69,7 +69,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
         async jwt({ token, user, trigger, session }) {
             if (user) {
-                token.id = user.id;
+                token.id = user.id || "";
                 token.role = (user as any).role || "TENANT";
             }
             // If updating session properties
@@ -83,7 +83,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         strategy: "jwt", // Use JWT for easier session handling in this setup
     },
     pages: {
-        signIn: '/login', // Redirect to our custom login page
+        signIn: '/', // Redirect to our custom login page (landing page)
     },
     trustHost: true,
 })

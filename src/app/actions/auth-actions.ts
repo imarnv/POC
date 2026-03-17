@@ -2,8 +2,8 @@
 
 import { signIn, signOut } from "@/auth"
 
-export async function loginWithGoogle() {
-    await signIn("google", { redirectTo: "/dashboard" })
+export async function loginWithGoogle(role: string = "tenant") {
+    await signIn("google", { redirectTo: `/dashboard?role=${role}` })
 }
 
 export async function loginWithCredentials(formData: FormData) {
@@ -20,5 +20,5 @@ export async function loginWithCredentials(formData: FormData) {
 }
 
 export async function logout() {
-    await signOut({ redirectTo: "/login" })
+    await signOut({ redirectTo: "/" })
 }
